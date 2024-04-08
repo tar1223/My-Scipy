@@ -145,8 +145,8 @@ def minimize(fun, x0, args=(), method=None, jac=None, hess=None,
             options.setdefault('xtol', tol)
         if meth in ('powell', 'l-bfgs-b', 'tnc', 'slsqp'):
             options.setdefault('ftol', tol)
-        if meth in ('bfgs', 'cg', 'l-bfgs-b', 'tnc', 'dogleg', 'trust-ncg',
-                    'trust-exact', 'trust-krylov'):
+        if meth in ('bfgs', 'cg', 'l-bfgs-b', 'tnc', 'dogleg',
+                    'trust-ncg', 'trust-exact', 'trust-krylov'):
             options.setdefault('gtol', tol)
         if meth in ('cobyla', '_custom'):
             options.setdefault('tol', tol)
@@ -227,8 +227,8 @@ def minimize(fun, x0, args=(), method=None, jac=None, hess=None,
     elif meth == 'bfgs':
         res = _minimize_bfgs(fun, x0, args, jac, callback, **options)
     elif meth == 'newton-cg':
-        res = _minimize_newtoncg(fun, x0, args, jac, bounds,
-                                 callback=callback, **options)
+        res = _minimize_newtoncg(fun, x0, args, jac, hess, hessp, callback,
+                                 **options)
     elif meth == 'l-bfgs-b':
         res = _minimize_lbfgsb(fun, x0, args, jac, bounds,
                                callback=callback, **options)
