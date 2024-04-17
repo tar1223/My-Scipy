@@ -1,10 +1,13 @@
+import warnings
 from numpy import (asarray, sqrt)
 import numpy as np
+from scipy.optimize._linesearch import (line_search_wolfe1, line_search_wolfe2,
+                                        LineSearchWarning)
 from scipy.optimize import OptimizeResult
 from scipy.optimize._optimize import (_check_unknown_options,
                                       _check_positive_definite,
                                       _prepare_scalar_function, vecnorm,
-                                      _line_search_wolfe12, _LineSearchError,
+                                      _LineSearchError,
                                       _call_callback_maybe_halt,
                                       _print_success_message_or_warn)
 
@@ -23,6 +26,44 @@ _status_message = {'success': 'Optimization terminated successfully.',
 # np.finfo(float).eps = 2.22e-16
 # 부동소수점 연산에서 발생할 수 있는 최소 오차
 _epsilon = sqrt(np.finfo(float).eps)
+
+
+# Wolfe 조건을 이용한 선형 탐색을 수행하는 _line_search_wolfe12 함수
+def _line_search_wolfe12(f, fprime, xk, pk, gfk, old_fval, old_old_fval,
+                         **kwargs):
+    # extra_condition을 kwargs에서 추출하거나 없으면 None으로 설정
+    extra_condition = kwargs.pop('extra_condition', None)
+
+    # line_search_wolfe1 객체로 선형 탐색을 수행하고 결과를 ret에 할당
+    ret = line_search_wolfe1(f, fprime, xk, pk, gfk,
+                             old_fval, old_old_fval,
+                             **kwargs)
+
+    # ret[0]이 None이 아니고 extra_condition이 None이 아닌 경우
+    if ret[0] is not None and extra_condition is not None:
+        xp1 = xk + ret[0] * pk  # xk에서 pk 방향으로 ret[0]만큼 이동한 위치를 xp1에 할당
+        # extra_condition이 True가 아닌 경우 ret[0]를 None으로 설정
+        if not extra_condition(ret[0], xp1, ret[3], ret[5]):
+            ret = (None,)
+
+    # ret[0]이 None인 경우 line_search_wolfe2 객체로 선형 탐색을 수행하고 결과를 ret에 할당
+    if ret[0] is None:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', LineSearchWarning)
+            kwargs2 = {}
+            for key in ('c1', 'c2', 'amax'):
+                if key in kwargs:
+                    kwargs2[key] = kwargs[key]
+            ret = line_search_wolfe2(f, fprime, xk, pk, gfk,
+                                     old_fval, old_old_fval,
+                                     extra_condition=extra_condition,
+                                     **kwargs2)
+
+    # ret[0]이 None인 경우 _LineSearchError 발생
+    if ret[0] is None:
+        raise _LineSearchError()
+
+    return ret
 
 
 # BFGS 알고리즘을 이용한 하나 이상의 변수의 스칼라 함수의 최소화하는 _minimize_bfgs 함수
