@@ -1,8 +1,8 @@
 import warnings
 from numpy import (asarray, sqrt)
 import numpy as np
-from ._linesearch import line_search_wolfe1
-from scipy.optimize._linesearch import (line_search_wolfe2, LineSearchWarning)
+from ._linesearch import (line_search_wolfe1, line_search_wolfe2,
+                          LineSearchWarning)
 from scipy.optimize import OptimizeResult
 from scipy.optimize._optimize import (_check_unknown_options,
                                       _check_positive_definite,
@@ -34,7 +34,7 @@ def _line_search_wolfe12(f, fprime, xk, pk, gfk, old_fval, old_old_fval,
     # extra_condition을 kwargs에서 추출하거나 없으면 None으로 설정
     extra_condition = kwargs.pop('extra_condition', None)
 
-    # line_search_wolfe1 객체로 선형 탐색을 수행하고 결과를 ret에 할당
+    # line_search_wolfe1 함수로 선형 탐색을 수행하고 결과를 ret에 할당
     ret = line_search_wolfe1(f, fprime, xk, pk, gfk,
                              old_fval, old_old_fval,
                              **kwargs)
@@ -46,7 +46,7 @@ def _line_search_wolfe12(f, fprime, xk, pk, gfk, old_fval, old_old_fval,
         if not extra_condition(ret[0], xp1, ret[3], ret[5]):
             ret = (None,)
 
-    # ret[0]이 None인 경우 line_search_wolfe2 객체로 선형 탐색을 수행하고 결과를 ret에 할당
+    # ret[0]이 None인 경우 line_search_wolfe2 함수로 선형 탐색을 수행하고 결과를 ret에 할당
     if ret[0] is None:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', LineSearchWarning)
@@ -84,7 +84,7 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
     if maxiter is None:
         maxiter = len(x0) * 200
 
-    # 스칼라 최소화를 위한 스칼라 함수 객체 준비
+    # 스칼라 최소화를 위한 스칼라 함수 객체 생성
     sf = _prepare_scalar_function(fun, x0, jac, args=args, epsilon=eps,
                                   finite_diff_rel_step=finite_diff_rel_step)
 
@@ -123,7 +123,7 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
                 _line_search_wolfe12(f, myfprime, xk, pk, gfk,
                                      old_fval, old_old_fval, amin=1e-100,
                                      amax=1e100, c1=c1, c2=c2)
-        # _line_search_wolfe12 객체에서 _LineSearchError 발생 시
+        # _line_search_wolfe12 함수에서 _LineSearchError 발생 시
         # warnflag를 2로 설정하고 최적화 과정 종료
         except _LineSearchError:
             warnflag = 2
