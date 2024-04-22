@@ -17,5 +17,5 @@ def __getattr__(name):
             return globals()[name]
         except KeyError:
             raise AttributeError(
-                f"Module 'scipy' has no attribute '{name}'"
+                f"Module 'myscipy' has no attribute '{name}'"
             )

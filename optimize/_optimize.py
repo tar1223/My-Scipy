@@ -3,7 +3,8 @@ from numpy import (asarray, sqrt)
 import numpy as np
 from ._linesearch import (line_search_wolfe1, line_search_wolfe2,
                           LineSearchWarning)
-from scipy.optimize._differentiable_functions import ScalarFunction, FD_METHODS
+from scipy.optimize._differentiable_functions import ScalarFunction
+from myscipy.optimize._differentiable_functions import FD_METHODS
 from scipy.optimize import OptimizeResult
 from scipy.optimize._optimize import (_check_unknown_options,
                                       _check_positive_definite,
@@ -133,9 +134,9 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
     sf = _prepare_scalar_function(fun, x0, jac, args=args, epsilon=eps,
                                   finite_diff_rel_step=finite_diff_rel_step)
 
-    # 스칼라 함수 객체의 fun, gerd 속성을 f, myfprime에 할당
+    # 스칼라 함수 객체의 fun, grad 속성을 f, myfprime에 할당
     f = sf.fun
-    myfprime = sf.gerd
+    myfprime = sf.grad
 
     # 초기값 x0에서의 함수값과 그래디언트를 old_fval, gfk에 할당
     old_fval = f(x0)
