@@ -3,10 +3,10 @@ from numpy import (asarray, sqrt)
 import numpy as np
 from ._linesearch import (line_search_wolfe1, line_search_wolfe2,
                           LineSearchWarning)
+from scipy.optimize._differentiable_functions import ScalarFunction, FD_METHODS
 from scipy.optimize import OptimizeResult
 from scipy.optimize._optimize import (_check_unknown_options,
-                                      _check_positive_definite,
-                                      _prepare_scalar_function, vecnorm,
+                                      _check_positive_definite, vecnorm,
                                       _LineSearchError,
                                       _call_callback_maybe_halt,
                                       _print_success_message_or_warn)
@@ -26,6 +26,38 @@ _status_message = {'success': 'Optimization terminated successfully.',
 # np.finfo(float).eps = 2.22e-16
 # 부동소수점 연산에서 발생할 수 있는 최소 오차
 _epsilon = sqrt(np.finfo(float).eps)
+
+
+# 스칼라 함수의 최소화를 위한 ScalarFunction 객체를 생성하는 _prepare_scalar_function 함수
+def _prepare_scalar_function(fun, x0, jac=None, args=(), bounds=None,
+                             epsilon=None, finite_diff_rel_step=None,
+                             hess=None):
+    # jac이 호출 가능한 객체인 경우 grad에 할당
+    if callable(jac):
+        grad = jac
+    # jac이 FD_METHODS 중 하나인 경우 grad에 할당하고 epsilon을 None으로 설정
+    elif jac in FD_METHODS:
+        epsilon = None
+        grad = jac
+    # 그 외의 경우 epsilon을 None으로 설정하고 grad를 '2-point'로 설정
+    else:
+        grad = '2-point'
+        epsilon = epsilon
+
+    # 헤세 행렬 hess가 None인 경우 None을 반환하는 함수로 설정
+    if hess is None:
+        def hess(x, *args):
+            return None
+
+    # 경계가 없는 경우 (-np.inf, np.inf)로 설정
+    if bounds is None:
+        bounds = (-np.inf, np.inf)
+
+    # ScalarFunction 객체 생성
+    sf = ScalarFunction(fun, x0, args, grad, hess,
+                        finite_diff_rel_step, bounds, epsilon=epsilon)
+
+    return sf
 
 
 # Wolfe 조건을 이용한 선형 탐색을 수행하는 _line_search_wolfe12 함수
