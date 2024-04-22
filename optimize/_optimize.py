@@ -6,7 +6,7 @@ from ._linesearch import (line_search_wolfe1, line_search_wolfe2,
 from scipy.optimize._differentiable_functions import ScalarFunction, FD_METHODS
 from scipy.optimize import OptimizeResult
 from scipy.optimize._optimize import (_check_unknown_options,
-                                      _check_positive_definite, vecnorm,
+                                      _check_positive_definite,
                                       _LineSearchError,
                                       _call_callback_maybe_halt,
                                       _print_success_message_or_warn)
@@ -26,6 +26,19 @@ _status_message = {'success': 'Optimization terminated successfully.',
 # np.finfo(float).eps = 2.22e-16
 # 부동소수점 연산에서 발생할 수 있는 최소 오차
 _epsilon = sqrt(np.finfo(float).eps)
+
+
+# 벡터의 노름을 계산하는 vecnorm 함수
+def vecnorm(x, ord=2):
+    # ord가 무한대인 경우 x의 절대값 중 최대값을 반환
+    if ord == np.inf:
+        return np.amax(np.abs(x))
+    # ord가 음의 무한대인 경우 x의 절대값 중 최소값을 반환
+    elif ord == -np.inf:
+        return np.amin(np.abs(x))
+    # 그 외의 경우 ord 노름을 계산하여 반환
+    else:
+        return np.sum(np.abs(x)**ord, axis=0)**(1.0 / ord)
 
 
 # 스칼라 함수의 최소화를 위한 ScalarFunction 객체를 생성하는 _prepare_scalar_function 함수
