@@ -1,6 +1,6 @@
 from warnings import warn
 
-from scipy.optimize._linesearch import scalar_search_wolfe2
+from scipy.optimize._linesearch import _zoom
 from scipy.optimize._dcsrch import DCSRCH
 import numpy as np
 
@@ -140,3 +140,115 @@ def line_search_wolfe2(f, myfprime, xk, pk, gfk=None, old_fval=None,
         derphi_star = gval[0]
 
     return alpha_star, fc[0], gc[0], phi_star, old_fval, derphi_star
+
+
+# Wolfe 조건을 이용해 최적의 스텝 사이즈를 계산하는 scalar_search_wolfe2 함수
+def scalar_search_wolfe2(phi, derphi, phi0=None,
+                         old_phi0=None, derphi0=None,
+                         c1=1e-4, c2=0.9, amax=None,
+                         extra_condition=None, maxiter=10):
+    # 0 < c1 < c2 < 1을 만족하는지 확인
+    _check_c1_c2(c1, c2)
+
+    # phi0가 None인 경우 xk에서의 함수값을 계산
+    if phi0 is None:
+        phi0 = phi(0.)
+
+    # derphi0가 None인 경우 xk에서의 그레디언트를 계산
+    if derphi0 is None:
+        derphi0 = derphi(0.)
+
+    # 초기 스텝 사이즈 alpha0을 0으로 초기화
+    alpha0 = 0
+    # old_phi0이 None이 아니고 derphi0이 0이 아닌 경우 alpha1을 계산
+    if old_phi0 is not None and derphi0 != 0:
+        alpha1 = min(1.0, 1.01*2*(phi0 - old_phi0)/derphi0)
+    # 그렇지 않은 경우 alpha1을 1로 초기화
+    else:
+        alpha1 = 1.0
+
+    # alpha1이 0보다 작은 경우 1로 설정
+    if alpha1 < 0:
+        alpha1 = 1.0
+
+    # amax가 None이 아닌 경우 alpha1과 amax 중 작은 값을 alpha1로 설정
+    if amax is not None:
+        alpha1 = min(alpha1, amax)
+
+    # alpha1만큼 pk 방향으로 이동한 지점에서의 함수값을 계산
+    phi_a1 = phi(alpha1)
+
+    # 초기 스텝 사이즈에 대한 함수값, 그레디언트 값을 phi_a0, derphi_a0에 할당
+    phi_a0 = phi0
+    derphi_a0 = derphi0
+
+    # extra_condition이 None인 경우 True를 반환하는 함수 정의
+    if extra_condition is None:
+        def extra_condition(alpha, phi):
+            return True
+
+    # maxiter만큼 반복
+    for i in range(maxiter):
+        # alpha1이 0이거나 amax가 None이 아니고 alpha0이 amax와 같은 경우 에러 메시지 출력
+        if alpha1 == 0 or (amax is not None and alpha0 == amax):
+            alpha_star = None  # 최적의 스텝 사이즈를 None으로 설정
+            phi_star = phi0  # 최적의 함수값을 phi0으로 설정
+            phi0 = old_phi0  # 초기 함수값을 old_phi0으로 설정
+            derphi_star = None  # 최적의 그레디언트를 None으로 설정
+
+            if alpha1 == 0:
+                msg = 'Rounding errors prevent the line search from converging'
+            else:
+                msg = 'The line search algorithm could not find ' + \
+                      'a solution less than or equal to amax: %s' % amax
+
+            warn(msg, LineSearchWarning, stacklevel=2)
+            break
+
+        # Armijo 조건을 만족하지 않거나
+        # 첫 번째 반복이 아니면서 현재 스텝 사이즈에서의 함수값이 이전 스텝 사이즈에서의 함수값보다 큰 경우
+        # 최적의 스텝 사이즈, 함수값, 그레디언트를 계산
+        not_first_iteration = i > 0
+        if (phi_a1 > phi0 + c1 * alpha1 * derphi0) or \
+           ((phi_a1 >= phi_a0) and not_first_iteration):
+            alpha_star, phi_star, derphi_star = \
+                _zoom(alpha0, alpha1, phi_a0,
+                      phi_a1, derphi_a0, phi, derphi,
+                      phi0, derphi0, c1, c2, extra_condition)
+            break
+
+        # 현재 스텝 사이즈에서의 그레디언트를 derphi_a1에 할당
+        derphi_a1 = derphi(alpha1)
+        # 현제 스텝 사이즈에서의 그레디언트가 초기 스텝 사이즈에서의 그레디언트의 -c2배보다 작은 경우
+        if (abs(derphi_a1) <= -c2*derphi0):
+            alpha_star = alpha1  # 최적의 스텝 사이즈를 alpha1로 설정
+            phi_star = phi_a1  # 최적의 함수값을 phi_a1로 설정
+            derphi_star = derphi_a1  # 최적의 그레디언트를 derphi_a1로 설정
+            break
+
+        # 현재 스텝 사이즈에서의 그레디언트가 0보다 큰 경우 최적의 스텝 사이즈, 함수값, 그레디언트를 계산
+        if (derphi_a1 >= 0):
+            alpha_star, phi_star, derphi_star = \
+                _zoom(alpha1, alpha0, phi_a1,
+                      phi_a0, derphi_a1, phi, derphi,
+                      phi0, derphi0, c1, c2, extra_condition)
+            break
+
+        alpha2 = 2 * alpha1  # 현제 스텝 사이즈의 2배를 alpha2에 할당
+        if amax is not None:  # amax가 None이 아닌 경우
+            alpha2 = min(alpha2, amax)  # alpha2와 amax 중 작은 값을 alpha2로 설정
+        alpha0 = alpha1  # 현제 스텝 사이즈를 이전 스텝 사이즈로 설정
+        alpha1 = alpha2  # alpha2를 현제 스텝 사이즈로 설정
+        phi_a0 = phi_a1  # 현제 스텝 사이즈에서의 함수값을 이전 스텝 사이즈에서의 함수값으로 설정
+        phi_a1 = phi(alpha1)  # 현제 스텝 사이즈에서의 2배한 스텝 사이즈에서의 함수값을 계산
+        derphi_a0 = derphi_a1  # 현제 스텝 사이즈에서의 그레디언트를 이전 스텝 사이즈에서의 그레디언트로 설정
+
+    # maxiter만큼 반복 후 최적의 스텝 사이즈, 함수값, 이전 함수값, 그레디언트를 찾지 못한 경우 에러 메시지 출력
+    else:
+        alpha_star = alpha1  # 최적의 스텝 사이즈를 alpha1로 설정
+        phi_star = phi_a1  # 최적의 함수값을 phi_a1로 설정
+        derphi_star = None  # 최적의 그레디언트를 None으로 설정
+        warn('The line search algorithm did not converge',
+             LineSearchWarning, stacklevel=2)
+
+    return alpha_star, phi_star, phi0, derphi_star
