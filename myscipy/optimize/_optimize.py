@@ -3,8 +3,8 @@ from numpy import (asarray, sqrt)
 import numpy as np
 from ._linesearch import (line_search_wolfe1, line_search_wolfe2,
                           LineSearchWarning)
-from scipy.optimize._differentiable_functions import ScalarFunction
-from myscipy.optimize._differentiable_functions import FD_METHODS
+from myscipy.optimize._differentiable_functions import (ScalarFunction,
+                                                        FD_METHODS)
 from scipy.optimize import OptimizeResult
 from scipy.optimize._optimize import (_check_unknown_options,
                                       _check_positive_definite,
