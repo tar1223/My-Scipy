@@ -231,9 +231,9 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
         else:
             rhok = 1. / rhok_inv
 
-        # A1은 단위행렬 I에서 sk의 외적과 yk의 외적을 곲한 값에 rhok를 곱한 값을 뺀 값
+        # A1은 단위행렬 I에서 sk의 외적과 yk의 외적을 곱한 값에 rhok를 곱한 값을 뺀 값
         A1 = I - sk[:, np.newaxis] * yk[np.newaxis, :] * rhok
-        # A2는 단위행렬 I에서 yk의 외적과 sk의 외적을 곲한 값에 rhok를 곱한 값을 뺀 값
+        # A2는 단위행렬 I에서 yk의 외적과 sk의 외적을 곱한 값에 rhok를 곱한 값을 뺀 값
         A2 = I - yk[:, np.newaxis] * sk[np.newaxis, :] * rhok
         # 헤세 행렬의 역행렬 Hk를 업데이트
         # Hk와 A2를 곱한 값에 A1을 곱한 후 sk와 sk의 외적을 곱한 값에 rhok를 곱한 값을 더함

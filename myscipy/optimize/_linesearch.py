@@ -1,7 +1,7 @@
 from warnings import warn
 
 from scipy.optimize._linesearch import _zoom
-from scipy.optimize._dcsrch import DCSRCH
+from ._dcsrch import DCSRCH
 import numpy as np
 
 

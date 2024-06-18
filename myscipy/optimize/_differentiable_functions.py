@@ -10,6 +10,7 @@ FD_METHODS = ('2-point', '3-point', 'cs')  # 유한 차분 방법의 종류
 
 # 스칼라 최소화를 위한 ScalarFunction 클래스
 class ScalarFunction:
+    # 초기화 메서드
     def __init__(self, fun, x0, args, grad, hess, finite_diff_rel_step,
                  finite_diff_bounds, epsilon=None):
         # grad가 호출 가능한 함수가 아니거나 FD_METHODS에 포함되지 않은 경우 에러 발생
@@ -240,58 +241,58 @@ class ScalarFunction:
         # update_x 함수를 self._update_x_impl에 저장
         self._update_x_impl = update_x
 
-    # 함수 값이 업데이트 되지 않았다면 _update_fun_impl 함수를 호출하여 self.f를 업데이트
+    # 함수 값이 업데이트 되지 않았다면 _update_fun_impl를 호출하여 self.f를 업데이트
     def _update_fun(self):
         if not self.f_updated:
             self._update_fun_impl()
             self.f_updated = True
 
-    # 그레디언트가 업데이트 되지 않았다면 _update_grad_impl 함수를 호출하여 self.g를 업데이트
+    # 그레디언트가 업데이트 되지 않았다면 _update_grad_impl를 호출하여 self.g를 업데이트
     def _update_grad(self):
         if not self.g_updated:
             self._update_grad_impl()
             self.g_updated = True
 
-    # 헤세가 업데이트 되지 않았다면 _update_hess_impl 함수를 호출하여 self.H를 업데이트
+    # 헤세가 업데이트 되지 않았다면 _update_hess_impl를 호출하여 self.H를 업데이트
     def _update_hess(self):
         if not self.H_updated:
             self._update_hess_impl()
             self.H_updated = True
 
-    # x에 대한 함수 값을 반환하는 함수
+    # x에 대한 함수 값을 반환하는 메서드
     def fun(self, x):
-        # x가 self.x와 다른 경우 _update_x_impl 함수를 호출하여 self.x를 업데이트
+        # x가 self.x와 다른 경우 _update_x_impl를 호출하여 self.x를 업데이트
         if not np.array_equal(x, self.x):
             self._update_x_impl(x)
-        # 함수 값이 업데이트 되지 않았다면 _update_fun 함수를 호출하여 self.f를 업데이트
+        # 함수 값이 업데이트 되지 않았다면 _update_fun 메서드를 호출하여 self.f를 업데이트
         self._update_fun()
         return self.f
 
-    # x에 대한 그레디언트를 반환하는 함수
+    # x에 대한 그레디언트를 반환하는 메서드
     def grad(self, x):
-        # x가 self.x와 다른 경우 _update_x_impl 함수를 호출하여 self.x를 업데이트
+        # x가 self.x와 다른 경우 _update_x_impl를 호출하여 self.x를 업데이트
         if not np.array_equal(x, self.x):
             self._update_x_impl(x)
-        # 그레디언트가 업데이트 되지 않았다면 _update_grad 함수를 호출하여 self.g를 업데이트
-        self._update_fun()
-        return self.f
+        # 그레디언트가 업데이트 되지 않았다면 _update_grad 메서드를 호출하여 self.g를 업데이트
+        self._update_grad()
+        return self.g
 
-    # x에 대한 헤세 행렬을 반환하는 함수
+    # x에 대한 헤세 행렬을 반환하는 메서드
     def hess(self, x):
-        # x가 self.x와 다른 경우 _update_x_impl 함수를 호출하여 self.x를 업데이트
+        # x가 self.x와 다른 경우 _update_x_impl를 호출하여 self.x를 업데이트
         if not np.array_equal(x, self.x):
             self._update_x_impl(x)
-        # 헤세가 업데이트 되지 않았다면 _update_hess 함수를 호출하여 self.H를 업데이트
+        # 헤세가 업데이트 되지 않았다면 _update_hess 메서드를 호출하여 self.H를 업데이트
         self._update_hess()
         return self.H
 
-    # x에 대한 함수 값과 그레디언트를 반환하는 함수
+    # x에 대한 함수 값과 그레디언트를 반환하는 메서드
     def fun_and_grad(self, x):
-        # x가 self.x와 다른 경우 _update_x_impl 함수를 호출하여 self.x를 업데이트
+        # x가 self.x와 다른 경우 _update_x_impl를 호출하여 self.x를 업데이트
         if not np.array_equal(self, x):
             self._update_x_impl(x)
-        # 함수 값이 업데이트 되지 않았다면 _update_fun 함수를 호출하여 self.f를 업데이트
+        # 함수 값이 업데이트 되지 않았다면 _update_fun 메서드를 호출하여 self.f를 업데이트
         self._update_fun()
-        # 그레디언트가 업데이트 되지 않았다면 _update_grad 함수를 호출하여 self.g를 업데이트
+        # 그레디언트가 업데이트 되지 않았다면 _update_grad 메서드를 호출하여 self.g를 업데이트
         self._update_grad()
         return self.f, self.g
