@@ -1,7 +1,5 @@
 import numpy as np
 
-from scipy.optimize._dcsrch import dcstep
-
 
 # 충분한 감소 조건과 곡률 조건을 만족하는 스텝 사이즈를 찾는 DCSRCH 클래스
 class DCSRCH:
@@ -226,13 +224,14 @@ class DCSRCH:
         if self.brackt:
             # 스텝 구간의 너비가 이전 너비의 66%보다 큰 경우
             if abs(self.sty - self.stx) >= p66 * self.width1:
-                stp = self.stx + p5 * (self.sty - self.stx)  # 스텝을 구간의 중점으로 설정
+                # 스텝을 스텝 구간의 중점으로 설정
+                stp = self.stx + p5 * (self.sty - self.stx)
             self.width1 = self.width  # 이전 너비를 현재 너비로 설정
             self.width = abs(self.sty - self.stx)  # 현재 너비 업데이트
 
         # brackt가 True인 경우
         if self.brackt:
-            # 구간의 한쪽 끝점과 다른 쪽 끝점을 stmin, stmax로 설정
+            # 스텝 구간의 한쪽 끝점과 다른 쪽 끝점을 stmin, stmax로 설정
             self.stmin = min(self.stx, self.sty)
             self.stmax = max(self.stx, self.sty)
         # brackt가 False인 경우
@@ -252,7 +251,127 @@ class DCSRCH:
                 and self.stmax - self.stmin <= self.xtol * self.stmax
             )  # 또는 self.brackt가 True이고 스텝의 너비가 xtol * stmax보다 작은 경우
         ):
-            stp = self.stx  # stp를 구간의 한쪽 끝점으로 설정
+            stp = self.stx  # stp를 스텝 구간의 한쪽 끝점으로 설정
 
         task = b'FG'  # task를 'FG'로 설정
         return stp, f, g, task
+
+
+# 충분한 감소 조건과 곡률 조건을 만족하는 스텝 사이즈를 찾아가는 dcstep 함수
+def dcstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, stpmin, stpmax):
+    sgn_dp = np.sign(dp)  # dp의 부호
+    sgn_dx = np.sign(dx)  # dx의 부호
+
+    sgnd = sgn_dp * sgn_dx  # dp의 부호와 dx의 부호의 곱
+
+    if fp > fx:  # 함수값이 구간의 한쪽 끝점에서의 함수값보다 큰 경우
+        # theta, s, gamma, p, q, r은 보간에 사용되는 값
+        theta = 3.0 * (fx - fp) / (stp - stx) + dx + dp
+        s = max(abs(theta), abs(dx), abs(dp))
+        gamma = s * np.sqrt((theta / s) ** 2 - (dx / s) * (dp / s))
+        if stp < stx:
+            gamma *= -1
+        p = (gamma - dx) + theta
+        q = ((gamma - dx) + gamma) + dp
+        r = p / q
+        # stpc는 보간된 스텝 값
+        stpc = stx + r * (stp - stx)
+        # stpq는 다른 방법으로 보간된 스텝 값
+        stpq = stx + ((dx / ((fx - fp) /
+                             (stp - stx) + dx)) / 2.0) * (stp - stx)
+        # stpc가 stpq보다 스텝 구간의 한쪽 끝점에 더 가까운 경우
+        if abs(stpc - stx) <= abs(stpq - stx):
+            stpf = stpc  # stpf를 stpc로 설정
+        # 그 외의 경우
+        else:
+            # stpc와 stpq의 중점을 stpf로 설정
+            stpf = stpc + (stpq - stpc) / 2.0
+        brackt = True  # brackt를 True로 설정
+    # 그레디언트의 부호가 바뀌는 경우 stpf 계산
+    elif sgnd < 0.0:
+        theta = 3 * (fx - fp) / (stp - stx) + dx + dp
+        s = max(abs(theta), abs(dx), abs(dp))
+        gamma = s * np.sqrt((theta / s) ** 2 - (dx / s) * (dp / s))
+        if stp > stx:
+            gamma *= -1
+        p = (gamma - dp) + theta
+        q = ((gamma - dp) + gamma) + dx
+        r = p / q
+        stpc = stp + r * (stx - stp)
+        stpq = stp + (dp / (dp - dx)) * (stx - stp)
+        if abs(stpc - stp) > abs(stpq - stp):
+            stpf = stpc
+        else:
+            stpf = stpq
+        brackt = True
+    # 현재 스텝에서의 그레디언트 절대값이 이전 스텝에서의 절대값보다 작은 경우 stpf 계산
+    elif abs(dp) < abs(dx):
+        theta = 3 * (fx - fp) / (stp - stx) + dx + dp
+        s = max(abs(theta), abs(dx), abs(dp))
+
+        gamma = s * np.sqrt(max(0, (theta / s) ** 2 - (dx / s) * (dp / s)))
+        if stp > stx:
+            gamma = -gamma
+        p = (gamma - dp) + theta
+        q = (gamma + (dx - dp)) + gamma
+        r = p / q
+        if r < 0 and gamma != 0:
+            stpc = stp + r * (stx - stp)
+        elif stp > stx:
+            stpc = stpmax
+        else:
+            stpc = stpmin
+        stpq = stp + (dp / (dp - dx)) * (stx - stp)
+
+        if brackt:
+            if abs(stpc - stp) < abs(stpq - stp):
+                stpf = stpc
+            else:
+                stpf = stpq
+
+            if stp > stx:
+                stpf = min(stp + 0.66 * (sty - stp), stpf)
+            else:
+                stpf = max(stp + 0.66 * (sty - stp), stpf)
+        else:
+            if abs(stpc - stp) > abs(stpq - stp):
+                stpf = stpc
+            else:
+                stpf = stpq
+            stpf = np.clip(stpf, stpmin, stpmax)
+
+    # 그 외의 경우 stpf 계산
+    else:
+        if brackt:
+            theta = 3.0 * (fp - fy) / (sty - stp) + dy + dp
+            s = max(abs(theta), abs(dy), abs(dp))
+            gamma = s * np.sqrt((theta / s) ** 2 - (dy / s) * (dp / s))
+            if stp > sty:
+                gamma = -gamma
+            p = (gamma - dp) + theta
+            q = ((gamma - dp) + gamma) + dy
+            r = p / q
+            stpc = stp + r * (sty - stp)
+            stpf = stpc
+        elif stp > stx:
+            stpf = stpmax
+        else:
+            stpf = stpmin
+
+    # 함수 값이 구간의 한쪽 끝점에서의 함수 값보다 큰 경우
+    if fp > fx:
+        sty = stp  # 다른 쪽 끝점에서의 스텝 값을 현재 스텝 값으로 설정
+        fx = fp  # 한쪽 끝점에서의 함수 값을 현재 함수 값으로 설정
+        dy = dp  # 다른 쪽 끝점에서의 그레디언트 값을 현재 그레디언트 값으로 설정
+    else:  # 그 외의 경우
+        if sgnd < 0:  # 그레디언트의 부호가 바뀌는 경우
+            sty = stx  # 다른 쪽 끝점에서의 스텝 값을 한쪽 끝점에서의 스텝 값으로 설정
+            fy = fx  # 다른 쪽 끝점에서의 함수 값을 한쪽 끝점에서의 함수 값으로 설정
+            dy = dx  # 다른 쪽 끝점에서의 그레디언트 값을 한쪽 끝점에서의 그레디언트 값으로 설정
+        stx = stp  # 한쪽 끝점에서의 스텝 값을 현재 스텝 값으로 설정
+        fx = fp  # 한쪽 끝점에서의 함수 값을 현재 함수 값으로 설정
+        dx = dp  # 한쪽 끝점에서의 그레디언트 값을 현재 그레디언트 값으로 설정
+
+    stp = stpf  # 스텝 값을 보간된 스텝 값으로 설정
+
+    return stx, fx, dx, sty, fy, dy, stp, brackt
